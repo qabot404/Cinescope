@@ -1,0 +1,24 @@
+# IDE
+.idea/
+.vscode/
+
+# Virtual environments
+.venv/
+venv/
+
+# System files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Logs and data
+*.log
+*.csv
+*.db
+*.xlsx
+
+# Secrets
+.env
+.token
