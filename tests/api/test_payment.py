@@ -1,4 +1,3 @@
-from conftest import payment_payload, admin_payment_requester
 from constants import PAYMENT_BASE_URL
 import requests
 import pytest

@@ -1,4 +1,4 @@
-from constants import REGISTER_ENDPOINT, LOGIN_ENDPOINT, BASE_URL
+from constants import LOGIN_ENDPOINT, REGISTER_ENDPOINT
 from custom_requester.custom_requester import CustomRequester
 
 
@@ -39,7 +39,11 @@ class AuthAPI(CustomRequester):
         )
 
     def authenticate(self, user_creds):
-        """Авторизация с обновлением заголовков с токеном доступа."""
+        """
+        Авторизация пользователя с обновлением заголовков сессии токеном доступа.
+
+        :param user_creds: Кортеж с email и паролем пользователя.
+        """
         login_data = {"email": user_creds[0], "password": user_creds[1]}
 
         response = self.login_user(login_data).json()
@@ -47,7 +51,9 @@ class AuthAPI(CustomRequester):
             raise KeyError("Token is missing")
 
         token = response["accessToken"]
-        self._update_session_headers(**{"authorization": f"Bearer {token}"})
+        self._update_session_headers(
+            **{"authorization": f"Bearer {token}"}
+        )
 
     def delete_user(self, user_id, expected_status=204):
         """Удаление пользователя."""

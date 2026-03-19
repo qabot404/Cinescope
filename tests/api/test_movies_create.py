@@ -1,8 +1,7 @@
-from constants import MOVIES_ENDPOINT
 import uuid
 
 
-def test_create_movie_with_valid_data_returns(api_requester):
+def test_create_movie_with_valid_data_returns(admin_user):
     """Создание фильма с валидными данными"""
     payload = {
         "name": f"Test Movie Test {uuid.uuid4()}",
@@ -14,21 +13,22 @@ def test_create_movie_with_valid_data_returns(api_requester):
         "genreId": 1,
     }
 
-    response = api_requester.send_request(
-        method="POST",
-        endpoint=MOVIES_ENDPOINT,
+    response = admin_user.movies_api.create_movie(
         data=payload,
         expected_status=201,
     )
 
-    data = response.json()
-    assert data["name"] == payload["name"]
-    assert data["price"] == payload["price"]
-    assert data["location"] == payload["location"]
-    assert "id" in data
+    movie = response.json()
+
+    assert movie["name"] == payload["name"]
+    assert movie["price"] == payload["price"]
+    assert movie["location"] == payload["location"]
+    assert movie["description"] == payload["description"]
+    assert movie["genreId"] == payload["genreId"]
+    assert movie["published"] == payload["published"]
 
 
-def test_create_movie_without_name_returns(api_requester):
+def test_create_movie_without_name_returns(admin_user):
     """Попытка создания фильма без поля name"""
     payload = {
         "imageUrl": "https://example.com/image.png",
@@ -39,9 +39,7 @@ def test_create_movie_without_name_returns(api_requester):
         "genreId": 1,
     }
 
-    response = api_requester.send_request(
-        method="POST",
-        endpoint=MOVIES_ENDPOINT,
+    response = admin_user.movies_api.create_movie(
         data=payload,
         expected_status=400,
     )
@@ -50,10 +48,10 @@ def test_create_movie_without_name_returns(api_requester):
     assert "message" in data, "В ответе отсутствует сообщение об ошибке"
 
 
-def test_create_movie_with_invalid_price_type_returns(api_requester):
+def test_create_movie_with_invalid_price_type_returns(admin_user):
     """Проверка валидации типа поля price при создании фильма"""
     payload = {
-        "name": "Negative Price Movie",
+        "name": f"Negative Price Movie {uuid.uuid4()}",
         "imageUrl": "https://example.com/image.png",
         "price": "free",
         "description": "Invalid price",
@@ -62,9 +60,7 @@ def test_create_movie_with_invalid_price_type_returns(api_requester):
         "genreId": 1,
     }
 
-    response = api_requester.send_request(
-        method="POST",
-        endpoint=MOVIES_ENDPOINT,
+    response = admin_user.movies_api.create_movie(
         data=payload,
         expected_status=400,
     )
@@ -73,7 +69,7 @@ def test_create_movie_with_invalid_price_type_returns(api_requester):
     assert "message" in data, "В ответе отсутствует сообщение об ошибке"
 
 
-def test_create_movie_with_duplicate_name_returns(api_requester):
+def test_create_movie_with_duplicate_name_returns(admin_user):
     """Попытка создания фильма с уже существующим названием"""
     payload = {
         "name": f"Duplicate Movie Name Test {uuid.uuid4()}",
@@ -85,18 +81,12 @@ def test_create_movie_with_duplicate_name_returns(api_requester):
         "genreId": 1,
     }
 
-    # Успешный запрос
-    api_requester.send_request(
-        method="POST",
-        endpoint=MOVIES_ENDPOINT,
+    admin_user.movies_api.create_movie(
         data=payload,
         expected_status=201,
     )
 
-    # Повторный запрос — дубликат
-    response = api_requester.send_request(
-        method="POST",
-        endpoint=MOVIES_ENDPOINT,
+    response = admin_user.movies_api.create_movie(
         data=payload,
         expected_status=409,
     )

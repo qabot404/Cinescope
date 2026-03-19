@@ -1,16 +1,18 @@
-import requests
 import random
+import uuid
+
 import pytest
+import requests
 
 from clients.api.api_manager import ApiManager
 from constants import (
+    API_BASE_URL,
     BASE_URL,
     HEADERS,
-    REGISTER_ENDPOINT,
     LOGIN_ENDPOINT,
-    API_BASE_URL,
     MOVIES_ENDPOINT,
     PAYMENT_BASE_URL,
+    REGISTER_ENDPOINT,
 )
 from custom_requester.custom_requester import CustomRequester
 from utils.data_generator import DataGenerator
@@ -32,6 +34,53 @@ def test_user():
     }
 
 
+@pytest.fixture(scope="session")
+def session():
+    """Фикстура для создания HTTP-сессии"""
+    http_session = requests.Session()
+    yield http_session
+    http_session.close()
+
+
+@pytest.fixture(scope="session")
+def api_manager(session):
+    """Фикстура возвращает экземпляр ApiManager"""
+    return ApiManager(session)
+
+
+@pytest.fixture(scope="session")
+def admin_session():
+    """Создание авторизованной сессии администратора"""
+    login_url = f"{BASE_URL}{LOGIN_ENDPOINT}"
+    admin_credentials = {
+        "email": "api1@gmail.com",
+        "password": "asdqwe123Q",
+    }
+
+    response = requests.post(
+        login_url,
+        json=admin_credentials,
+        headers=HEADERS,
+    )
+    assert response.status_code in (200, 201), "Ошибка авторизации администратора"
+
+    token = response.json().get("accessToken")
+    assert token is not None, "Токен доступа отсутствует в ответе"
+
+    admin_http_session = requests.Session()
+    admin_http_session.headers.update(HEADERS)
+    admin_http_session.headers.update({"Authorization": f"Bearer {token}"})
+    return admin_http_session
+
+
+@pytest.fixture
+def admin_user(api_manager):
+    """Создание авторизованного ApiManager для администратора"""
+    admin_credentials = ("api1@gmail.com", "asdqwe123Q")
+    api_manager.auth_api.authenticate(admin_credentials)
+    return api_manager
+
+
 @pytest.fixture
 def registered_user(api_manager, test_user):
     """Фикстура для регистрации и получения данных зарегистрированного пользователя"""
@@ -41,6 +90,30 @@ def registered_user(api_manager, test_user):
     user_data = test_user.copy()
     user_data["id"] = response_data["id"]
     return user_data
+
+
+@pytest.fixture
+def auth_session(test_user):
+    """Создание авторизованной сессии для обычного пользователя"""
+    register_url = f"{BASE_URL}{REGISTER_ENDPOINT}"
+    response = requests.post(register_url, json=test_user, headers=HEADERS)
+    assert response.status_code == 201, "Ошибка регистрации пользователя"
+
+    login_url = f"{BASE_URL}{LOGIN_ENDPOINT}"
+    login_data = {
+        "email": test_user["email"],
+        "password": test_user["password"],
+    }
+    response = requests.post(login_url, json=login_data, headers=HEADERS)
+    assert response.status_code in (200, 201), "Ошибка авторизации"
+
+    token = response.json().get("accessToken")
+    assert token is not None, "Токен доступа отсутствует в ответе"
+
+    user_http_session = requests.Session()
+    user_http_session.headers.update(HEADERS)
+    user_http_session.headers.update({"Authorization": f"Bearer {token}"})
+    return user_http_session
 
 
 @pytest.fixture
@@ -61,59 +134,43 @@ def admin_payment_requester(admin_session):
     return CustomRequester(admin_session, PAYMENT_BASE_URL)
 
 
-@pytest.fixture(scope="session")
-def api_manager(session):
-    """Фикстура возвращает экземпляр ApiManager"""
-    return ApiManager(session)
+@pytest.fixture
+def created_movie(admin_user):
+    """Фикстура для создания тестового фильма с последующим удалением после выполнения теста"""
+    data = {
+        "name": f"Test Movie {uuid.uuid4()}",
+        "description": "Test Description",
+        "price": 10,
+        "location": "MSK",
+        "published": True,
+        "genreId": 1,
+    }
 
+    response = admin_user.movies_api.create_movie(data)
+    movie_id = response.json()["id"]
 
-@pytest.fixture(scope="session")
-def session():
-    """Фикстура для создания HTTP-сессии"""
-    http_session = requests.Session()
-    yield http_session
-    http_session.close()
+    yield movie_id
+
+    admin_user.movies_api.delete_movie(
+        movie_id,
+        expected_status=200,
+    )
 
 
 @pytest.fixture
-def auth_session(test_user):
-    """Создание авторизованной сессии для обычного пользователя"""
-    # Регистрация пользователя
-    register_url = f"{BASE_URL}{REGISTER_ENDPOINT}"
-    response = requests.post(register_url, json=test_user, headers=HEADERS)
-    assert response.status_code == 201, "Ошибка регистрации пользователя"
+def movie_for_delete(admin_user):
+    """Создание тестового фильма для проверки удаления"""
+    data = {
+        "name": f"Test Movie {uuid.uuid4()}",
+        "description": "Test Description",
+        "price": 10,
+        "location": "MSK",
+        "published": True,
+        "genreId": 1,
+    }
 
-    # Авторизация
-    login_url = f"{BASE_URL}{LOGIN_ENDPOINT}"
-    login_data = {"email": test_user["email"], "password": test_user["password"]}
-    response = requests.post(login_url, json=login_data, headers=HEADERS)
-    assert response.status_code in (200, 201), "Ошибка авторизации"
-
-    token = response.json().get("accessToken")
-    assert token is not None, "Токен доступа отсутствует в ответе"
-
-    session = requests.Session()
-    session.headers.update(HEADERS)
-    session.headers.update({"Authorization": f"Bearer {token}"})
-    return session
-
-
-@pytest.fixture(scope="session")
-def admin_session():
-    """Создание авторизованной сессии администратора"""
-    login_url = f"{BASE_URL}{LOGIN_ENDPOINT}"
-    admin_credentials = {"email": "api1@gmail.com", "password": "asdqwe123Q"}
-
-    response = requests.post(login_url, json=admin_credentials, headers=HEADERS)
-    assert response.status_code in (200, 201), "Ошибка авторизации администратора"
-
-    token = response.json().get("accessToken")
-    assert token is not None, "Токен доступа отсутствует в ответе"
-
-    session = requests.Session()
-    session.headers.update(HEADERS)
-    session.headers.update({"Authorization": f"Bearer {token}"})
-    return session
+    response = admin_user.movies_api.create_movie(data)
+    return response.json()["id"]
 
 
 @pytest.fixture
@@ -146,8 +203,13 @@ def card_data():
 @pytest.fixture
 def existing_movie_id(auth_session):
     """Возвращает id существующего опубликованного фильма"""
-    response = auth_session.get(f"{API_BASE_URL}{MOVIES_ENDPOINT}", params={"published": True})
-    assert response.status_code == 200, f"Ошибка получения списка фильмов: {response.text}"
+    response = auth_session.get(
+        f"{API_BASE_URL}{MOVIES_ENDPOINT}",
+        params={"published": True},
+    )
+    assert response.status_code == 200, (
+        f"Ошибка получения списка фильмов: {response.text}"
+    )
     data = response.json()
     movies = data.get("movies", [])
     assert movies, "Список фильмов пуст"
@@ -157,7 +219,11 @@ def existing_movie_id(auth_session):
 @pytest.fixture
 def payment_payload(card_data, existing_movie_id):
     """Корректный payload для создания платежа"""
-    return {"movieId": existing_movie_id, "amount": random.randint(1, 5), "card": card_data}
+    return {
+        "movieId": existing_movie_id,
+        "amount": random.randint(1, 5),
+        "card": card_data,
+    }
 
 
 @pytest.fixture
@@ -165,4 +231,8 @@ def payment_payload_with_invalid_card_number(card_data, existing_movie_id):
     """Невалидные данные банковской карты"""
     card_data_invalid = card_data.copy()
     card_data_invalid["cardNumber"] = "0000000000000000"
-    return {"movieId": existing_movie_id, "amount": 1, "card": card_data_invalid}
+    return {
+        "movieId": existing_movie_id,
+        "amount": 1,
+        "card": card_data_invalid,
+    }

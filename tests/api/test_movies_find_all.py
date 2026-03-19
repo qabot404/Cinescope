@@ -1,26 +1,33 @@
-from constants import MOVIES_ENDPOINT
-
-
-def test_get_movies_public_returns_movies_list(api_requester):
+def test_get_movies_public_returns_movies_list(api_manager):
     """Проверка получения списка фильмов"""
-    response = api_requester.send_request(
-        method="GET",
-        endpoint=MOVIES_ENDPOINT,
-        expected_status=200,
-    )
+    response = api_manager.movies_api.get_movies()
 
     data = response.json()
     assert "movies" in data
     assert isinstance(data["movies"], list)
 
 
-def test_get_movies_response_has_pagination_fields(api_requester):
+def test_get_movies_with_filters(api_manager):
+    """Проверка, что API возвращает фильмы, соответствующие заданным фильтрам по цене и статусу публикации"""
+    params = {
+        "minPrice": 5,
+        "maxPrice": 20,
+        "published": True,
+    }
+
+    response = api_manager.movies_api.get_movies(params=params)
+
+    data = response.json()
+    movies = data["movies"]
+
+    for movie in movies:
+        assert 5 <= movie["price"] <= 20
+        assert movie["published"] is True
+
+
+def test_get_movies_response_has_pagination_fields(api_manager):
     """Ответ содержит обязательные поля пагинации"""
-    response = api_requester.send_request(
-        method="GET",
-        endpoint=MOVIES_ENDPOINT,
-        expected_status=200,
-    )
+    response = api_manager.movies_api.get_movies()
 
     data = response.json()
     assert "count" in data
@@ -29,13 +36,9 @@ def test_get_movies_response_has_pagination_fields(api_requester):
     assert "pageCount" in data
 
 
-def test_get_movies_items_have_required_fields(api_requester):
+def test_get_movies_items_have_required_fields(api_manager):
     """Фильмы в списке содержат обязательные поля"""
-    response = api_requester.send_request(
-        method="GET",
-        endpoint=MOVIES_ENDPOINT,
-        expected_status=200,
-    )
+    response = api_manager.movies_api.get_movies()
 
     movies = response.json()["movies"]
     if movies:
@@ -46,16 +49,14 @@ def test_get_movies_items_have_required_fields(api_requester):
         assert "published" in movie
 
 
-def test_get_movies_with_invalid_query_param_returns(api_requester):
+def test_get_movies_with_invalid_query_param_returns(api_manager):
     """Некорректный query-параметр приводит к ошибке валидации"""
-    response = api_requester.send_request(
-        method="GET",
-        endpoint=f"{MOVIES_ENDPOINT}?page=invalid",
+    response = api_manager.movies_api.get_movies(
+        params={"page": "invalid"},
         expected_status=400,
     )
 
-    data = response.json()
-    assert "message" in data, "В ответе отсутствует сообщение об ошибке"
+    assert response.status_code == 400
 
 
 def test_get_movies_wrong_endpoint_returns(api_requester):

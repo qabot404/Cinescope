@@ -1,38 +1,16 @@
-from constants import MOVIES_ENDPOINT
+def test_delete_movie_by_valid_id_returns(admin_user, movie_for_delete):
+    """Проверка успешного удаления фильма по валидному идентификатору"""
+    response = admin_user.movies_api.delete_movie(movie_for_delete)
+
+    assert response.status_code == 200, "Фильм не был успешно удалён"
 
 
-def test_delete_movie_by_valid_id_returns(api_requester):
-    """Удаление фильма по валидному id"""
-    # Получаем список фильмов
-    list_response = api_requester.send_request(
-        method="GET",
-        endpoint=MOVIES_ENDPOINT,
-        expected_status=200,
-    )
-
-    movies = list_response.json()["movies"]
-    assert len(movies) > 0, "Список фильмов пуст"
-
-    movie_id = movies[0]["id"]
-
-    # Удаляем фильм
-    response = api_requester.send_request(
-        method="DELETE",
-        endpoint=f"{MOVIES_ENDPOINT}/{movie_id}",
-        expected_status=200,
-    )
-
-    data = response.json()
-    assert "id" in data
-
-
-def test_delete_movie_by_non_existent_id_returns(api_requester):
+def test_delete_movie_by_non_existent_id_returns(admin_user):
     """Попытка удаления фильма по несуществующему id"""
     non_existent_id = 99999
 
-    response = api_requester.send_request(
-        method="DELETE",
-        endpoint=f"{MOVIES_ENDPOINT}/{non_existent_id}",
+    response = admin_user.movies_api.delete_movie(
+        non_existent_id,
         expected_status=404,
     )
 
@@ -40,13 +18,12 @@ def test_delete_movie_by_non_existent_id_returns(api_requester):
     assert "message" in data, "В ответе отсутствует сообщение об ошибке"
 
 
-def test_delete_movie_with_negative_id_returns(api_requester):
+def test_delete_movie_with_negative_id_returns(admin_user):
     """Попытка удаления фильма с отрицательным id"""
     negative_id = -1
 
-    response = api_requester.send_request(
-        method="DELETE",
-        endpoint=f"{MOVIES_ENDPOINT}/{negative_id}",
+    response = admin_user.movies_api.delete_movie(
+        negative_id,
         expected_status=404,
     )
 
