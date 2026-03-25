@@ -63,16 +63,3 @@ class UserAPI(CustomRequester):
             endpoint=f"/user/{user_id}",
             expected_status=expected_status,
         )
-
-    def clean_up_user(self, user_id, expected_status=204):
-        """
-        Удаление пользователя после выполнения тестов.
-
-        :param user_id: ID пользователя.
-        :param expected_status: Ожидаемый статус-код.
-        """
-        return self.send_request(
-            method="DELETE",
-            endpoint=f"/user/{user_id}",
-            expected_status=expected_status,
-        )

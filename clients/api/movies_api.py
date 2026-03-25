@@ -4,6 +4,9 @@ from custom_requester.custom_requester import CustomRequester
 class MoviesApi(CustomRequester):
     MOVIES_ENDPOINT = "/movies"
 
+    def __init__(self, session, base_url):
+        super().__init__(session=session, base_url=base_url)
+
     def get_movies(self, params=None, expected_status=200):
         """
         Получение списка фильмов с возможностью фильтрации.

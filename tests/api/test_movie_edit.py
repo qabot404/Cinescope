@@ -1,15 +1,15 @@
-def test_edit_movie_by_valid_id_returns(admin_user, existing_movie_id):
+def test_edit_movie_by_valid_id_returns(admin_user, created_movie):
     """Редактирование фильма по валидному id"""
     payload = {"price": 600}
 
     response = admin_user.movies_api.update_movie(
-        movie_id=existing_movie_id,
+        movie_id=created_movie,
         data=payload,
         expected_status=200,
     )
 
     data = response.json()
-    assert data["id"] == existing_movie_id
+    assert data["id"] == created_movie
     assert data["price"] == payload["price"]
 
 

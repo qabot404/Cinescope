@@ -73,7 +73,7 @@ def admin_session():
     return admin_http_session
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def admin_user(api_manager):
     """Создание авторизованного ApiManager для администратора"""
     admin_credentials = ("api1@gmail.com", "asdqwe123Q")
@@ -201,18 +201,19 @@ def card_data():
 
 
 @pytest.fixture
-def existing_movie_id(auth_session):
+def existing_movie_id(api_manager):
     """Возвращает id существующего опубликованного фильма"""
-    response = auth_session.get(
-        f"{API_BASE_URL}{MOVIES_ENDPOINT}",
+    response = api_manager.movies_api.get_movies(
         params={"published": True},
+        expected_status=200,
     )
-    assert response.status_code == 200, (
-        f"Ошибка получения списка фильмов: {response.text}"
-    )
+
     data = response.json()
     movies = data.get("movies", [])
-    assert movies, "Список фильмов пуст"
+
+    if not movies:
+        pytest.fail("Список опубликованных фильмов пуст")
+
     return movies[0]["id"]
 
 

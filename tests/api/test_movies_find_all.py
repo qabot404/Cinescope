@@ -20,6 +20,8 @@ def test_get_movies_with_filters(api_manager):
     data = response.json()
     movies = data["movies"]
 
+    assert movies, "Список отфильтрованных фильмов пуст"
+
     for movie in movies:
         assert 5 <= movie["price"] <= 20
         assert movie["published"] is True
