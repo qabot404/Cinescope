@@ -1,24 +1,24 @@
+import pytest
+
 from clients.api.api_manager import ApiManager
-from utils.data_generator import DataGenerator
+from conftest import test_user
+from models.base_models import RegisterUserResponse
 
 
 class TestAuthAPI:
+    @pytest.mark.slow
     def test_register_user(self, api_manager: ApiManager, test_user):
-        """Тест на регистрацию пользователя"""
-        response = api_manager.auth_api.register_user(test_user)
-        data = response.json()
+        response = api_manager.auth_api.register_user(user_data=test_user)
 
-        # Проверки
-        assert data["email"] == test_user["email"], "Email не совпадает"
-        assert "id" in data, "ID пользователя отсутствует в ответе"
-        assert "roles" in data, "Роли пользователя отсутствуют в ответе"
-        assert "USER" in data["roles"], "Роль 'USER' должна быть у пользователя"
+        register_user_response = RegisterUserResponse(**response.json())
+
+        assert register_user_response.email == test_user.email, "Email не совпадает"
 
     def test_register_and_login_user(self, api_manager: ApiManager, registered_user):
         """Тест на регистрацию и авторизацию пользователя"""
         login_data = {
-            "email": registered_user["email"],
-            "password": registered_user["password"],
+            "email": registered_user.email,
+            "password": registered_user.password,
         }
 
         response = api_manager.auth_api.login_user(login_data)
@@ -28,45 +28,35 @@ class TestAuthAPI:
         assert "accessToken" in response_data, (
             "Токен доступа отсутствует в ответе"
         )
-        assert response_data["user"]["email"] == registered_user["email"], (
-            "Email не совпадает"
-        )
+        assert response_data["user"]["email"] == registered_user.email, "Email не совпадает"
 
-    def test_register_with_existing_email_returns_conflict(self, api_manager: ApiManager):
+    def test_register_with_existing_email_returns_conflict(self, api_manager: ApiManager, test_user):
         """Попытка регистрации с существующим email"""
-        password = DataGenerator.generate_random_password()
-        payload = {
-            "email": DataGenerator.generate_random_email(),
-            "fullName": DataGenerator.generate_random_name(),
-            "password": password,
-            "passwordRepeat": password,
-        }
 
-        # Первая регистрация
+        payload = test_user
+
         api_manager.auth_api.register_user(payload)
 
-        # Повторная регистрация
         response = api_manager.auth_api.register_user(payload, expected_status=409)
         data = response.json()
-        assert "message" in data, "Сообщение об ошибке отсутствует"
 
-    def test_register_with_short_password(self, api_manager: ApiManager):
+        assert "message" in data, "Сообщения об ошибке отсутствует"
+
+    def test_register_with_short_password(self, api_manager: ApiManager, test_user):
         """Попытка регистрации с паролем длиной менее 8 символов"""
-        payload = {
-            "email": DataGenerator.generate_random_email(),
-            "fullName": DataGenerator.generate_random_name(),
-            "password": "Short1",
-            "passwordRepeat": "Short1",
-        }
+        payload = test_user.model_copy()
+        payload.password = "Short1"
+        payload.passwordRepeat = "Short1"
 
         response = api_manager.auth_api.register_user(payload, expected_status=400)
         data = response.json()
-        assert "message" in data, "Сообщение об ошибке отсутствует"
 
-    def test_login_with_invalid_credentials(self, api_manager: ApiManager):
+        assert "message" in data, "Сообщение об ошибке отсутствуют"
+
+    def test_login_with_invalid_credentials(self, api_manager: ApiManager, test_user):
         """Проверка ошибки авторизации при неверном логине или пароле"""
         payload = {
-            "email": DataGenerator.generate_random_email(),
+            "email": test_user.email,
             "password": "WrongPassword123",
         }
 
@@ -75,18 +65,14 @@ class TestAuthAPI:
         assert "message" in data, "Сообщение об ошибке отсутствует"
 
     def test_create_user_success(
-            self, api_manager: ApiManager, admin_session
+            self, api_manager: ApiManager, admin_session, test_user
     ):
         """Успешное создание пользователя администратором"""
         api_manager.user_api.session = admin_session
 
-        payload = {
-            "email": DataGenerator.generate_random_email(),
-            "fullName": DataGenerator.generate_random_name(),
-            "password": DataGenerator.generate_random_password(),
-            "verified": True,
-            "banned": False,
-        }
+        payload = test_user.model_copy()
+        payload.verified = True
+        payload.banned = False
 
         response = api_manager.user_api.create_user(payload)
         data = response.json()
@@ -94,27 +80,22 @@ class TestAuthAPI:
         assert response.status_code == 201, (
             "Ожидался статус 201 при создании пользователя"
         )
-        assert data["email"] == payload["email"]
-        assert data["fullName"] == payload["fullName"]
+        assert data["email"] == payload.email
+        assert data["fullName"] == payload.fullName
         assert data["verified"] is True
         assert data.get("banned", False) is False
         assert "id" in data
         assert "roles" in data
 
     def test_create_user_with_existing_email_returns_conflict(
-            self, api_manager: ApiManager, admin_session
+            self, api_manager: ApiManager, admin_session, test_user
     ):
         """Попытка создания пользователя с существующим email"""
         api_manager.user_api.session = admin_session
-        email = DataGenerator.generate_random_email()
 
-        payload = {
-            "email": email,
-            "fullName": DataGenerator.generate_random_name(),
-            "password": DataGenerator.generate_random_password(),
-            "verified": True,
-            "banned": False,
-        }
+        payload = test_user.model_copy()
+        payload.verified = True
+        payload.banned = False
 
         # Первая попытка
         first_response = api_manager.user_api.create_user(payload)

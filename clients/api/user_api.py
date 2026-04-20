@@ -6,8 +6,17 @@ class UserAPI(CustomRequester):
     Класс для работы с API пользователей.
     """
 
+    BASE_URL = "https://auth.dev-cinescope.coconutqa.ru"
+
     def __init__(self, session, base_url):
         super().__init__(session=session, base_url=base_url)
+
+    def get_user(self, user_locator, expected_status=200):
+        return self.send_request(
+            "GET",
+            f"/user/{user_locator}",
+            expected_status=expected_status,
+        )
 
     def create_user(self, payload, expected_status=201):
         """
