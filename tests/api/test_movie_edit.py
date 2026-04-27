@@ -25,6 +25,7 @@ class TestUpdateMovie:
                 data=payload,
                 expected_status=200,
             )
+
         with allure.step("Проверка ответа через Pydantic модель"):
             parsed = MovieResponse(**response.json())
 
@@ -43,9 +44,11 @@ class TestUpdateMovie:
         ]
     )
     @pytest.mark.regression
+    @pytest.mark.negative
     @allure.story("Ошибки обновления фильма")
     @allure.title("Ошибка при обновлении фильма с невалидным id: {movie_id}")
     def test_edit_movie_with_invalid_id_returns(self, admin_api, movie_id):
+        """Попытка редактирования фильма с невалидным id"""
         with allure.step(f"Подготовка данных для обновления фильма с id = {movie_id}"):
             payload = {"price": 900}
 
@@ -60,6 +63,7 @@ class TestUpdateMovie:
             data = response.json()
             assert "message" in data, "В ответе отсутствует сообщение об ошибке"
 
+    @pytest.mark.regression
     @pytest.mark.db
     @allure.story("Проверка обновления в БД")
     @allure.title("Проверка, что фильм реально обновился в БД")
@@ -73,11 +77,15 @@ class TestUpdateMovie:
             payload = {"price": 777}
 
         with allure.step(f"Отправка PATCH запроса на обновление фильма {movie_id}"):
-            admin_api.movies_api.update_movie(
+            response = admin_api.movies_api.update_movie(
                 movie_id=movie_id,
                 data=payload,
                 expected_status=200,
             )
+
+        with allure.step("Проверка ответа через Pydantic модель"):
+            parsed = MovieResponse(**response.json())
+            assert parsed.price == payload["price"]
 
         with allure.step("Проверка обновления в базе данных"):
             movie_in_db = db_helper.get_movie_by_id(movie_id)

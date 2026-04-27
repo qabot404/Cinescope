@@ -1,6 +1,8 @@
 import pytest
 import allure
 
+from models.movie_models import MovieResponse
+
 
 @allure.epic("Movies")
 @allure.feature("GET /movies/{id}")
@@ -17,16 +19,14 @@ class TestGetMovieById:
         with allure.step(f"Отправка GET запроса на получение фильма {existing_movie_id}"):
             response = api_manager.movies_api.get_movie_by_id(existing_movie_id)
 
-        with allure.step("Проверка ответа"):
-            data = response.json()
+        with allure.step("Проверка через Pydantic"):
+            parsed = MovieResponse(**response.json())
 
-        with allure.step("Проверка, что ID фильма соответствует запрошенному"):
-            assert data["id"] == existing_movie_id
+            assert parsed.id == existing_movie_id
+            assert parsed.name is not None
+            assert parsed.price is not None
+            assert parsed.location is not None
 
-        with allure.step("Проверка наличия обязательных полей"):
-            assert "name" in data, "Отсутствует поле name"
-            assert "price" in data, "Отсутствует поле price"
-            assert "location" in data, "Отсутствует поле location"
 
     @pytest.mark.regression
     @pytest.mark.negative

@@ -41,6 +41,7 @@ class TestCreateMovie:
             assert parsed.description == payload["description"]
             assert parsed.genreId == payload["genreId"]
             assert parsed.published == payload["published"]
+            assert parsed.imageUrl == payload["imageUrl"]
 
         with allure.step("Проверка создания фильма в базе данных"):
             movie_in_db = db_helper.get_movie_by_id(parsed.id)
@@ -48,6 +49,7 @@ class TestCreateMovie:
             assert movie_in_db is not None, "Фильм не найден в БД"
             assert movie_in_db.name == payload["name"]
             assert movie_in_db.price == payload["price"]
+            assert movie_in_db.genre_id == payload["genreId"]
 
     @pytest.mark.regression
     @pytest.mark.negative
@@ -138,7 +140,7 @@ class TestCreateMovie:
 
             assert "message" in data, "В ответе отсутствует сообщение об ошибке"
 
-    @pytest.mark.slow
+    @pytest.mark.regression
     @pytest.mark.negative
     @allure.story("Авторизация и доступ")
     @allure.title("Пользователь с ролью USER не может создать фильм")

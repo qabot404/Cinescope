@@ -1,6 +1,8 @@
 import pytest
 import allure
 
+from models.movie_models import MoviesListResponse
+
 
 @allure.epic("Movies")
 @allure.feature("GET /movies")
@@ -15,9 +17,9 @@ class TestGetMovies:
             response = api_manager.movies_api.get_movies()
 
         with allure.step("Проверка, что ответ содержит список фильмов"):
-            data = response.json()
-            assert "movies" in data
-            assert isinstance(data["movies"], list)
+            parsed = MoviesListResponse(**response.json())
+
+            assert isinstance(parsed.movies, list), "movies не является списком"
 
     @pytest.mark.regression
     @allure.story("Фильтрация фильмов")
@@ -35,14 +37,15 @@ class TestGetMovies:
             response = api_manager.movies_api.get_movies(params=params)
 
         with allure.step("Проверка, что список отфильтрованных фильмов не пуст"):
-            data = response.json()
-            movies = data["movies"]
+            parsed = MoviesListResponse(**response.json())
+            movies = parsed.movies
+
             assert movies, "Список отфильтрованных фильмов пуст"
 
         with allure.step("Проверка, что все фильмы соответствуют фильтрам"):
             for movie in movies:
-                assert 5 <= movie["price"] <= 20, f"Цена фильма {movie['price']} не в диапазоне 5-20"
-                assert movie["published"] is True, f"Фильм {movie['name']} не опубликован"
+                assert 5 <= movie.price <= 20, f"Цена фильма {movie.price} не в диапазоне 5-20"
+                assert movie.published is True, f"Фильм {movie.name} не опубликован"
 
     @pytest.mark.regression
     @allure.story("Пагинация")
@@ -51,13 +54,13 @@ class TestGetMovies:
         """Ответ содержит обязательные поля пагинации"""
         with allure.step("Отправка GET запроса на получение списка фильмов"):
             response = api_manager.movies_api.get_movies()
-            data = response.json()
+            parsed = MoviesListResponse(**response.json())
 
         with allure.step("Проверка наличия полей пагинации"):
-            assert "count" in data, "Отсутствует поле count"
-            assert "page" in data, "Отсутствует поле page"
-            assert "pageSize" in data, "Отсутствует поле pageSize"
-            assert "pageCount" in data, "Отсутствует поле pageCount"
+            assert parsed.count is not None, "Отсутствует поле count"
+            assert parsed.page is not None, "Отсутствует поле page"
+            assert parsed.pageSize is not None, "Отсутствует поле pageSize"
+            assert parsed.pageCount is not None, "Отсутствует поле pageCount"
 
     @pytest.mark.regression
     @allure.story("Валидация данных")
@@ -66,8 +69,8 @@ class TestGetMovies:
         """Фильмы в списке содержат обязательные поля"""
         with allure.step("Отправка GET запроса на получение списка фильмов"):
             response = api_manager.movies_api.get_movies()
-            data = response.json()
-            movies = data.get("movies", [])
+            parsed = MoviesListResponse(**response.json())
+            movies = parsed.movies
 
         with allure.step("Проверка, что список фильмов не пуст"):
             if not movies:
@@ -75,10 +78,10 @@ class TestGetMovies:
 
         with allure.step("Проверка обязательных полей у первого фильма"):
             movie = movies[0]
-            assert "id" in movie, "Отсутствует поле id"
-            assert "name" in movie, "Отсутствует поле name"
-            assert "price" in movie, "Отсутствует поле price"
-            assert "published" in movie, "Отсутствует поле published"
+            assert movie.id is not None, "Отсутствует поле id"
+            assert movie.name is not None, "Отсутствует поле name"
+            assert movie.price is not None, "Отсутствует поле price"
+            assert movie.published is not None, "Отсутствует поле published"
 
     @pytest.mark.regression
     @pytest.mark.negative
@@ -137,21 +140,22 @@ class TestGetMovies:
             response = api_manager.movies_api.get_movies(params=params)
 
         with allure.step("Проверка, что список отфильтрованных фильмов не пуст"):
-            data = response.json()
-            movies = data["movies"]
+            parsed = MoviesListResponse(**response.json())
+            movies = parsed.movies
+
             assert movies, "Список отфильтрованных фильмов пуст"
 
         with allure.step(f"Проверка фильтрации по полю {check_type}"):
             for movie in movies:
                 if check_type == "price":
                     min_price, max_price = expected
-                    assert min_price <= movie["price"] <= max_price, \
-                        f"Цена фильма {movie['price']} не в диапазоне {min_price}-{max_price}"
+                    assert min_price <= movie.price <= max_price, \
+                        f"Цена фильма {movie.price} не в диапазоне {min_price}-{max_price}"
 
                 elif check_type == "location":
-                    assert movie["location"] == expected, \
-                        f"Локация фильма {movie['location']} не соответствует ожидаемой {expected}"
+                    assert movie.location == expected, \
+                        f"Локация фильма {movie.location} не соответствует ожидаемой {expected}"
 
                 elif check_type == "genre":
-                    assert movie["genreId"] == expected, \
-                        f"Жанр фильма {movie['genreId']} не соответствует ожидаемому {expected}"
+                    assert movie.genreId == expected, \
+                        f"Жанр фильма {movie.genreId} не соответствует ожидаемому {expected}"

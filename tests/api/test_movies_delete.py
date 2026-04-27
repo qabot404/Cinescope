@@ -60,7 +60,7 @@ class TestDeleteMovie:
 
             assert "message" in data, "В ответе отсутствует сообщение об ошибке"
 
-    @pytest.mark.slow
+    @pytest.mark.regression
     @pytest.mark.parametrize(
         "user,expected_status",
         [
