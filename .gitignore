@@ -20,4 +20,5 @@ __pycache__/
 *.xlsx
 
 # Secrets
+.env
 .token
