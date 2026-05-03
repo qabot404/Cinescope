@@ -107,13 +107,15 @@ def admin_user(user_session, super_admin, creation_user_data):
 
 
 @pytest.fixture
-def registered_user(api_manager, test_user):
+def registered_user(api_manager, super_admin, test_user):
     """Фикстура для регистрации и получения данных зарегистрированного пользователя"""
     response = api_manager.auth_api.register_user(test_user)
-    response_data = response.json()
+    user_id = response.json()["id"]
+
+    super_admin.api.user_api.update_user(user_id, {"verified": True})
 
     user_data = test_user.model_copy()
-    user_data.id = response_data["id"]
+    user_data.id = user_id
     return user_data
 
 

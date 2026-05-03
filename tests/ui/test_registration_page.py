@@ -1,26 +1,38 @@
-from uuid import uuid4
-from playwright.sync_api import Page, expect
+import time
+
+import allure
+import pytest
+from playwright.sync_api import sync_playwright
+
+from models.page_object_models import CinescopRegisterPage
+from utils.data_generator import DataGenerator
 
 
-def test_registration(page: Page):
-    page.goto('https://dev-cinescope.coconutqa.ru/register')
+@allure.epic("Тестирование UI")
+@allure.feature("Тестирование Страницы Register")
+@pytest.mark.ui
+class TestRegisterPage:
+    @allure.title("Проведение успешной регистрации")
+    def test_register_by_ui(self):
+        with sync_playwright() as playwright:
+            # Подготовка данных для регистрации
+            random_email = DataGenerator.generate_random_email()
+            random_name = DataGenerator.generate_random_name()
+            random_password = DataGenerator.generate_random_password()
 
-    # Локаторы
-    full_name = page.get_by_placeholder("Имя Фамилия Отчество")
-    email = page.locator('[name="email"]')
-    password = page.locator('[name="password"]')
-    password_repeat = page.locator('[name="passwordRepeat"]')
-    submit_button = page.locator('button[type="submit"]')
+            browser = playwright.chromium.launch(
+                headless=False)  # Запуск браузера headless=False для визуального отображения
+            page = browser.new_page()
 
-    user_email = f'{uuid4()}@mail.qa'
+            register_page = CinescopRegisterPage(page)  # Создаем объект страницы регистрации cinescope
+            register_page.open()
+            register_page.register(f"PlaywrightTest {random_name}", random_email, random_password,
+                                   random_password)  # Выполняем регистрацию
 
-    full_name.fill("Жмышенко Валерий Альбертович")
-    email.fill(user_email)
-    password.fill("Qwerty1234")
-    password_repeat.fill("Qwerty1234")
+            register_page.assert_was_redirect_to_login_page()  # Проверка редиректа на страницу /login
+            register_page.make_screenshot_and_attach_to_allure()  # Прикрепляем скриншот
+            register_page.assert_allert_was_pop_up()  # Проверка появления и исчезновения алерта
 
-    submit_button.click()
-
-    # Проверки
-    expect(page).to_have_url("https://dev-cinescope.coconutqa.ru/login")
-    expect(page.get_by_text("Подтвердите свою почту")).to_be_visible()
+            # Пауза для визуальной проверки (нужно удалить в реальном тестировании)
+            time.sleep(5)
+            browser.close()
