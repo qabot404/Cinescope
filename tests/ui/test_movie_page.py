@@ -1,10 +1,7 @@
 import allure
 import pytest
-from playwright.sync_api import sync_playwright
 
 from models.page_object_models import CinescopLoginPage, CinescopMoviePage
-
-MOVIE_ID = 195737
 
 
 @allure.epic("Тестирование UI")
@@ -13,29 +10,33 @@ MOVIE_ID = 195737
 class TestMoviePage:
 
     @allure.title("Оставление отзыва под фильмом")
-    def test_leave_review(self, registered_user):
-        with sync_playwright() as plawright:
-            browser = plawright.chromium.launch(headless=False)
-            page = browser.new_page()
+    def test_leave_review(self, page, registered_user, created_movie):
+        movie = created_movie()
 
-            # Логинимся
-            login_page = CinescopLoginPage(page)
+        login_page = CinescopLoginPage(page)
+        movie_page = CinescopMoviePage(page)
+
+        with allure.step("Логин пользователя"):
             login_page.open()
-            login_page.login(registered_user.email, registered_user.password)
+            login_page.login(
+                registered_user.email,
+                registered_user.password
+            )
             login_page.assert_was_redirect_to_home_page()
 
-            # Переход на страницу фильма
-            movie_page = CinescopMoviePage(page)
-            movie_page.open(MOVIE_ID)
+        with allure.step("Переход на страницу фильма"):
+            movie_page.open(movie["id"])
 
-            # Оставляем отзыв
-            review_text = "Отличный фильм, очень понравился!"
-            movie_page.leave_review(text=review_text, rating=5)
+        review_text = "Отличный фильм, очень понравился!"
 
-            # Проверка, что отзыв оставлен
+        with allure.step("Оставление отзыва"):
+            movie_page.leave_review(
+                text=review_text,
+                rating=5
+            )
+
+        with allure.step("Проверка отображения отзыва"):
             movie_page.assert_review_is_visible(review_text)
 
-            # Скриншот в Allure
+        with allure.step("Скриншот"):
             movie_page.make_screenshot_and_attach_to_allure()
-
-            browser.close()

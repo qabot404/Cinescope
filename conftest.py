@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 import requests
+from playwright.sync_api import sync_playwright
 from sqlalchemy.orm import Session
 
 from clients.api.api_manager import ApiManager
@@ -389,3 +390,31 @@ def created_test_user(db_helper):
     # Cleanup после теста
     if db_helper.get_user_by_id(user.id):
         db_helper.delete_user(user)
+
+
+@pytest.fixture(scope="function")
+def browser():
+    """
+    Фикстура, которая создает браузер Playwright
+    и закрывает его после завершения теста
+    """
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+
+        yield browser
+
+        browser.close()
+        playwright.stop()
+
+
+@pytest.fixture(scope="function")
+def page(browser):
+    """
+    Фикстура, которая создает страницу браузера
+    и закрывает её после завершения теста
+    """
+    page = browser.new_page()
+
+    yield page
+
+    page.close()

@@ -33,6 +33,4 @@ class TestRegisterPage:
             register_page.make_screenshot_and_attach_to_allure()  # Прикрепляем скриншот
             register_page.assert_allert_was_pop_up()  # Проверка появления и исчезновения алерта
 
-            # Пауза для визуальной проверки (нужно удалить в реальном тестировании)
-            time.sleep(5)
             browser.close()
